@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 import requests
 import io
+import subprocess
 
 # ------------------- CONFIG -------------------
 ADMIN_PASSWORD = "abc123"
@@ -299,72 +300,33 @@ with tabs[len(all_types)+2]:
         st.success("Access granted!")
         st.subheader("Existing Cards (Table View)")
         st.dataframe(st.session_state.cards_df)
-        
-        
-        # PSA API token (replace with your real token)
-        API_TOKEN = "LxMT0iPp81IBe3BUjvrJwiz0T4Tpvv-YrfV-Gh181FYwE3EnfL-SpfIvqvvfGcW4HZoqfxofXy-8m1Aeo9FXrgWPUKstiGS6fHRMNBz5Hl4O4tyRgTE3bYXxZmi7c0J_u1YPkkfOl5N-zfWPB4l68FCZKmaQHbydXettSCQ7HCKH8-sfusOy1umAPwY3Rxx8YWcU3Xoc4ZnzaPV5UviiWwRGTv7Hjjco2gvbqfzUX1D0GJhuq_kcQKLOLx7_vcw48ws15q7sbP-yMqC9TxDKWoRzHq3BX4Al2ZyzxSO3gvAuiRMp"
-        
-        st.title("PSA Card Cert Number Checker")
-        
-        # Step 1: Upload Excel file
-        uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx", "xls"])
-        if uploaded_file:
-            df = pd.read_excel(uploaded_file)
-            
-            if 'cert_number' not in df.columns:
-                st.error("Excel file must have a 'cert_number' column")
-            else:
-                cert_numbers = df['cert_number'].dropna().unique()
-                st.write(f"Found {len(cert_numbers)} cert numbers")
-                
-                # Step 2 & 3: Query PSA API
-                results = []
-                for cert in cert_numbers:
-                    url = f"https://api.psacard.com/publicapi/cert/GetByCertNumber/{cert}"
-                    headers = {
-                        "Authorization": f"Bearer {API_TOKEN}",
-                        "Content-Type": "application/json"
-                    }
-                    # Print what will be sent
-                    print("==== REQUEST ====")
-                    print("URL:", url)
-                    print("Headers:", headers)
-                    print("=================")
-                    
-                    # Send the request
-                    response = requests.get(url, headers=headers)
-                    
-                    # Print response info
-                    print("Status Code:", response.status_code)
-                    print("Response Text:", response.text)
-                    print("\n")
-                    if response.status_code == 200:
-                        data = response.json()
-                        st.write(f"Cert Number: {cert}")
-                        st.json(data)  # Display each response
-                        
-                        # Step 4: Populate new columns in the dataframe
-                        # Adjust keys based on PSA API response structure
-                        df.loc[df['cert_number'] == cert, 'grade'] = data.get('grade')
-                        df.loc[df['cert_number'] == cert, 'serial_number'] = data.get('serialNumber')
-                        df.loc[df['cert_number'] == cert, 'card_name'] = data.get('cardName')
-                    else:
-                        st.warning(f"Failed to fetch data for cert {cert}: {response.status_code}")
-                
-                # Step 5: Preview updated table
-                st.subheader("Preview Updated Table")
-                st.dataframe(df)
-                
-                # Step 6: Export as Excel
-                towrite = io.BytesIO()
-                df.to_excel(towrite, index=False, engine='openpyxl')
-                towrite.seek(0)
-                st.download_button(
-                    label="Download updated Excel",
-                    data=towrite,
-                    file_name="updated_cert_data.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+    st.title("Mini Terminal for cURL Requests")
 
+    # Input box for curl commands
+    curl_command = st.text_area("Enter cURL command:", placeholder="e.g., curl https://api.github.com")
+    
+    if st.button("Run"):
+        if curl_command.strip() == "":
+            st.warning("Please enter a cURL command")
+        else:
+            try:
+                # Run the curl command using subprocess
+                result = subprocess.run(
+                    curl_command, 
+                    shell=True, 
+                    capture_output=True, 
+                    text=True
+                )
+                
+                # Display stdout and stderr
+                st.subheader("Output")
+                if result.stdout:
+                    st.code(result.stdout)
+                if result.stderr:
+                    st.subheader("Errors")
+                    st.code(result.stderr)
+                    
+            except Exception as e:
+                st.error(f"An error occurred: {e}")
 
 
