@@ -265,7 +265,71 @@ with tabs[len(all_types)+2]:
         st.success("Access granted!")
         st.subheader("Existing Cards (Table View)")
         st.dataframe(st.session_state.cards_df)
+        st.title("PSA Card Cert Lookup")
 
+# Input your PSA API token here
+API_TOKEN = "2s2mAmZVZuX40V-nQdLNGRxYjYcrHxbQafsRPc0uIiVh1zUnnhwZpuPeU9s4tbhncsVF6c9oWU5dugMmCIpJxB8aj9AOrjBMcdNlSNBUt2CY6tquI2fghdN6K0uEV_aIjl89Vq58xKSvnbQ6S0XfnGcMQ-Mw1pvmPlQkXVwLNa4LstQ4tr2zuoBVq3rJp6E9UaiJDekr_wSunX4Mov9lKIldo9GF8SIG7kVtr3SoeLsvblTDKUAWtXeYXS8j7CnKS2P5utiopkwHHY7f81LbApuH2XBJL765zsoiLNhtHaaM2B9E"
+
+# Step 1: Upload Excel file
+uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx", "xls"])
+if uploaded_file:
+    df = pd.read_excel(uploaded_file)
+    
+    if 'cert_number' not in df.columns:
+        st.error("Excel file must have a 'cert_number' column")
+    else:
+        cert_numbers = df['cert_number'].dropna().unique()
+        st.write(f"Found {len(cert_numbers)} cert numbers")
+        
+        # Step 2 & 3: Fetch data from PSA API
+        for cert in cert_numbers:
+            url = f"https://api.psacard.com/publicapi/cert/GetByCertNumber/{cert}"
+            headers = {
+                "Authorization": f"Bearer {API_TOKEN}",
+                "Content-Type": "application/json"
+            }
+
+            # Optional: print curl equivalent for debugging
+            curl_command = f"""curl -X GET "{url}" \\
+-H "Authorization: Bearer {API_TOKEN}" \\
+-H "Content-Type: application/json\""""
+            st.text(f"Sending request for cert {cert}:\n{curl_command}")
+
+            # Send GET request
+            response = requests.get(url, headers=headers)
+            
+            if response.status_code == 200:
+                data = response.json().get("PSACert", {})
+                
+                # Step 4: Populate new columns
+                df.loc[df['cert_number'] == cert, 'SpecID'] = data.get('SpecID')
+                df.loc[df['cert_number'] == cert, 'SpecNumber'] = data.get('SpecNumber')
+                df.loc[df['cert_number'] == cert, 'LabelType'] = data.get('LabelType')
+                df.loc[df['cert_number'] == cert, 'Year'] = data.get('Year')
+                df.loc[df['cert_number'] == cert, 'Brand'] = data.get('Brand')
+                df.loc[df['cert_number'] == cert, 'Category'] = data.get('Category')
+                df.loc[df['cert_number'] == cert, 'CardNumber'] = data.get('CardNumber')
+                df.loc[df['cert_number'] == cert, 'Subject'] = data.get('Subject')
+                df.loc[df['cert_number'] == cert, 'Variety'] = data.get('Variety')
+                df.loc[df['cert_number'] == cert, 'CardGrade'] = data.get('CardGrade')
+                df.loc[df['cert_number'] == cert, 'TotalPopulation'] = data.get('TotalPopulation')
+            else:
+                st.warning(f"Failed to fetch data for cert {cert}: {response.status_code}")
+        
+        # Step 5: Preview updated table
+        st.subheader("Preview Updated Table")
+        st.dataframe(df)
+        
+        # Step 6: Export updated Excel
+        towrite = io.BytesIO()
+        df.to_excel(towrite, index=False, engine='openpyxl')
+        towrite.seek(0)
+        st.download_button(
+            label="Download Updated Excel",
+            data=towrite,
+            file_name="updated_cert_data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
         # Mini Terminal for cURL Requests
         st.subheader("Mini Terminal for cURL Requests")
         curl_command = st.text_area("Enter cURL command:", placeholder="e.g., curl https://api.github.com")
