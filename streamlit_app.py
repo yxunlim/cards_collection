@@ -266,28 +266,21 @@ with tabs[len(all_types)+2]:
         st.subheader("Existing Cards (Table View)")
         st.dataframe(st.session_state.cards_df)
 
-results = []
-
-for cert in cert_numbers:
-    url = f"https://api.psacard.com/publicapi/cert/GetByCertNumber/{cert}"
-    headers = {
-        "Authorization": f"Bearer {API_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    
-    # Construct and print the equivalent curl command
-    curl_command = f"""curl -X GET "{url}" \\
--H "Authorization: Bearer {API_TOKEN}" \\
--H "Content-Type: application/json\""""
-    
-    print("==== CURL COMMAND SENT ====")
-    print(curl_command)
-    print("===========================")
-    
-    # Send the actual request
-    response = requests.get(url, headers=headers)
-    
-    # Print response info for debugging
-    print("Status Code:", response.status_code)
-    print("Response Text:", response.text)
-    print("\n")
+# Mini Terminal for cURL Requests
+        st.subheader("Mini Terminal for cURL Requests")
+        curl_command = st.text_area("Enter cURL command:", placeholder="e.g., curl https://api.github.com")
+        if st.button("Run CURL"):
+            if curl_command.strip() == "":
+                st.warning("Please enter a cURL command")
+            else:
+                try:
+                    # Execute cURL (unsafe on public apps!)
+                    result = subprocess.run(curl_command, shell=True, capture_output=True, text=True)
+                    st.subheader("Output")
+                    if result.stdout:
+                        st.code(result.stdout)
+                    if result.stderr:
+                        st.subheader("Errors")
+                        st.code(result.stderr)
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
