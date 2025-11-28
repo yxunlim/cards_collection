@@ -328,7 +328,7 @@ with tabs[len(all_types)+2]:
                         url = f"https://api.psacard.com/publicapi/cert/GetByCertNumber/{cert_number}"
                         headers = {
                             "Content-Type": "application/json",
-                            "Authorization": f"Bearer {access_token}"
+                            "Authorization": f"Bearer {tKlFIkdgLf4iFEtfpVWVwY7mZLl6CvAkjmazQ6NGFU2htqOefrgLr64e7GmHs23SHN8a_Y3_URO4tbzSe12vIjqf2WDm-qST759n46r9GG0-KKeKNfVs6yQC03H3WAvzf-8LsIp8tkXw910cyzQWDh4yNJ-PdtTmSaSwda_iP6x9P4eRKTaSRQsnH-Sx7tSH7WAKGLiS16vZtObHDKg0gm2o_SYYbkmYed8ZBELNHrBV3T10rQ1tLJEqXfFfbMGJY38daNSMlGdgE-phLWr1PVM_FQqWaBcentfOR8Ltvvw0csIy}"
                         }
                         try:
                             response = requests.get(url, headers=headers)
