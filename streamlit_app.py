@@ -307,7 +307,7 @@ with tabs[len(all_types)+2]:
         st.subheader("PSA Cert Number Data Fetcher")
         st.markdown(
             "Upload an Excel file with a `cert_number` column. "
-            "Enter your PSA API token to fetch data and populate the sheet. (tKlFIkdgLf4iFEtfpVWVwY7mZLl6CvAkjmazQ6NGFU2htqOefrgLr64e7GmHs23SHN8a_Y3_URO4tbzSe12vIjqf2WDm-qST759n46r9GG0-KKeKNfVs6yQC03H3WAvzf-8LsIp8tkXw910cyzQWDh4yNJ-PdtTmSaSwda_iP6x9P4eRKTaSRQsnH-Sx7tSH7WAKGLiS16vZtObHDKg0gm2o_SYYbkmYed8ZBELNHrBV3T10rQ1tLJEqXfFfbMGJY38daNSMlGdgE-phLWr1PVM_FQqWaBcentfOR8Ltvvw0csIy)"
+            "Enter your PSA API token to fetch data and populate the sheet. (LxMT0iPp81IBe3BUjvrJwiz0T4Tpvv-YrfV-Gh181FYwE3EnfL-SpfIvqvvfGcW4HZoqfxofXy-8m1Aeo9FXrgWPUKstiGS6fHRMNBz5Hl4O4tyRgTE3bYXxZmi7c0J_u1YPkkfOl5N-zfWPB4l68FCZKmaQHbydXettSCQ7HCKH8-sfusOy1umAPwY3Rxx8YWcU3Xoc4ZnzaPV5UviiWwRGTv7Hjjco2gvbqfzUX1D0GJhuq_kcQKLOLx7_vcw48ws15q7sbP-yMqC9TxDKWoRzHq3BX4Al2ZyzxSO3gvAuiRMp)"
         )
 
         uploaded_file = st.file_uploader("Upload Excel", type=["xlsx", "xls"], key="psa_upload")
