@@ -325,7 +325,19 @@ with tabs[len(all_types)+2]:
                         "Authorization": f"Bearer {API_TOKEN}",
                         "Content-Type": "application/json"
                     }
+                    # Print what will be sent
+                    print("==== REQUEST ====")
+                    print("URL:", url)
+                    print("Headers:", headers)
+                    print("=================")
+                    
+                    # Send the request
                     response = requests.get(url, headers=headers)
+                    
+                    # Print response info
+                    print("Status Code:", response.status_code)
+                    print("Response Text:", response.text)
+                    print("\n")
                     if response.status_code == 200:
                         data = response.json()
                         st.write(f"Cert Number: {cert}")
