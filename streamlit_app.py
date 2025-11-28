@@ -165,6 +165,8 @@ for index, t in enumerate(all_types):
         if search_query.strip():
             type_df = type_df[type_df["name"].str.contains(search_query, case=False, na=False)]
         type_df = type_df[(type_df["market_price_clean"] >= min_price) & (type_df["market_price_clean"] <= max_price)]
+        if selected_set == "All":
+            type_df = type_df.sort_values("set", ascending=False)
 
         if sort_option == "Name (A-Z)":
             type_df = type_df.sort_values("name")
