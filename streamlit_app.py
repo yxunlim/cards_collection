@@ -293,8 +293,65 @@ with tabs[len(all_types)+2]:
     password = st.text_input("Enter Admin Password", type="password")
     if password == ADMIN_PASSWORD:
         st.success("Access granted!")
+
+        # ----- Existing Card Refresh -----
         if st.button("Refresh Cards (Admin)", key="refresh_admin"):
             st.session_state.cards_df = load_cards()
             st.success("Cards refreshed!")
+
         st.subheader("Existing Cards (Table View)")
         st.dataframe(st.session_state.cards_df)
+
+        # ----- PSA Cert Number Fetcher -----
+        st.markdown("---")
+        st.subheader("PSA Cert Number Data Fetcher")
+        st.markdown(
+            "Upload an Excel file with a `cert_number` column. "
+            "The app will fetch data from PSA API and populate the sheet."
+        )
+
+        uploaded_file = st.file_uploader("Upload Excel", type=["xlsx", "xls"], key="psa_upload")
+        access_token = st.text_input("Enter PSA API Access Token", type="password", key="psa_token")
+
+        if uploaded_file and access_token:
+            if st.button("Fetch PSA Data", key="fetch_psa_data"):
+                df_cert = pd.read_excel(uploaded_file)
+                if "cert_number" not in df_cert.columns:
+                    st.error("The Excel file must contain a 'cert_number' column.")
+                else:
+                    st.info(f"Fetching data for {len(df_cert)} cert numbers...")
+                    import requests
+
+                    results = []
+                    for index, row in df_cert.iterrows():
+                        cert_number = str(row["cert_number"]).zfill(8)
+                        url = f"https://api.psacard.com/publicapi/cert/GetByCertNumber/{cert_number}"
+                        headers = {
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {access_token}"
+                        }
+                        try:
+                            response = requests.get(url, headers=headers)
+                            if response.status_code == 200:
+                                data = response.json()
+                                results.append(data)
+                            else:
+                                results.append({"error": f"HTTP {response.status_code}"})
+                        except Exception as e:
+                            results.append({"error": str(e)})
+
+                    # Merge API results with original
+                    result_df = pd.json_normalize(results)
+                    final_df = pd.concat([df_cert, result_df], axis=1)
+                    st.success("PSA data fetched successfully!")
+                    st.dataframe(final_df)
+
+                    # Download button
+                    output_file = "psa_data.xlsx"
+                    final_df.to_excel(output_file, index=False)
+                    st.download_button(
+                        label="Download Updated Excel",
+                        data=open(output_file, "rb"),
+                        file_name="psa_data.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
