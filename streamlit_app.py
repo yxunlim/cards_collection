@@ -307,11 +307,14 @@ with tabs[len(all_types)+2]:
         st.subheader("PSA Cert Number Data Fetcher")
         st.markdown(
             "Upload an Excel file with a `cert_number` column. "
-            "The app will fetch data from PSA API and populate the sheet."
+            "Enter your PSA API token to fetch data and populate the sheet. (tKlFIkdgLf4iFEtfpVWVwY7mZLl6CvAkjmazQ6NGFU2htqOefrgLr64e7GmHs23SHN8a_Y3_URO4tbzSe12vIjqf2WDm-qST759n46r9GG0-KKeKNfVs6yQC03H3WAvzf-8LsIp8tkXw910cyzQWDh4yNJ-PdtTmSaSwda_iP6x9P4eRKTaSRQsnH-Sx7tSH7WAKGLiS16vZtObHDKg0gm2o_SYYbkmYed8ZBELNHrBV3T10rQ1tLJEqXfFfbMGJY38daNSMlGdgE-phLWr1PVM_FQqWaBcentfOR8Ltvvw0csIy)"
         )
 
         uploaded_file = st.file_uploader("Upload Excel", type=["xlsx", "xls"], key="psa_upload")
         access_token = st.text_input("Enter PSA API Access Token", type="password", key="psa_token")
+
+        import requests
+        from io import BytesIO
 
         if uploaded_file and access_token:
             if st.button("Fetch PSA Data", key="fetch_psa_data"):
@@ -320,40 +323,39 @@ with tabs[len(all_types)+2]:
                     st.error("The Excel file must contain a 'cert_number' column.")
                 else:
                     st.info(f"Fetching data for {len(df_cert)} cert numbers...")
-                    import requests
 
                     results = []
                     for index, row in df_cert.iterrows():
                         cert_number = str(row["cert_number"]).zfill(8)
                         url = f"https://api.psacard.com/publicapi/cert/GetByCertNumber/{cert_number}"
-                        token = "tKlFIkdgLf4iFEtfpVWVwY7mZLl6CvAkjmazQ6NGFU2htqOefrgLr64e7GmHs23SHN8a_Y3_URO4tbzSe12vIjqf2WDm-qST759n46r9GG0-KKeKNfVs6yQC03H3WAvzf-8LsIp8tkXw910cyzQWDh4yNJ-PdtTmSaSwda_iP6x9P4eRKTaSRQsnH-Sx7tSH7WAKGLiS16vZtObHDKg0gm2o_SYYbkmYed8ZBELNHrBV3T10rQ1tLJEqXfFfbMGJY38daNSMlGdgE-phLWr1PVM_FQqWaBcentfOR8Ltvvw0csIy"
-
                         headers = {
                             "Content-Type": "application/json",
-                            "Authorization": f"Bearer {token}"
+                            "Authorization": f"Bearer {access_token}"
                         }
                         try:
-                            response = requests.get(url, headers=headers)
+                            response = requests.get(url, headers=headers, timeout=10)
                             if response.status_code == 200:
                                 data = response.json()
                                 results.append(data)
                             else:
                                 results.append({"error": f"HTTP {response.status_code}"})
-                        except Exception as e:
+                        except requests.exceptions.RequestException as e:
                             results.append({"error": str(e)})
 
-                    # Merge API results with original
+                    # Merge API results with original cert numbers
                     result_df = pd.json_normalize(results)
                     final_df = pd.concat([df_cert, result_df], axis=1)
                     st.success("PSA data fetched successfully!")
                     st.dataframe(final_df)
 
                     # Download button
-                    output_file = "psa_data.xlsx"
-                    final_df.to_excel(output_file, index=False)
+                    output = BytesIO()
+                    final_df.to_excel(output, index=False)
+                    output.seek(0)
                     st.download_button(
                         label="Download Updated Excel",
-                        data=open(output_file, "rb"),
+                        data=output,
                         file_name="psa_data.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
+
