@@ -266,7 +266,7 @@ with tabs[len(all_types)+2]:
         st.subheader("Existing Cards (Table View)")
         st.dataframe(st.session_state.cards_df)
 
-# Mini Terminal for cURL Requests
+        # Mini Terminal for cURL Requests
         st.subheader("Mini Terminal for cURL Requests")
         curl_command = st.text_area("Enter cURL command:", placeholder="e.g., curl https://api.github.com")
         if st.button("Run CURL"):
@@ -285,29 +285,30 @@ with tabs[len(all_types)+2]:
                 except Exception as e:
                     st.error(f"An error occurred: {e}")
 
-st.subheader("Check PSA Certificate")
-    
-    # Discreet input for certificate number
-    cert_number = st.text_input("Certificate Number:", type="password", placeholder="Enter your certificate number")
-    
-    if st.button("Send"):
-        if not cert_number.strip():
-            st.warning("Please enter a certificate number")
-        else:
-            try:
-                # Construct the cURL command dynamically
-                curl_command = f'''curl -X GET "https://api.psacard.com/publicapi/cert/GetByCertNumber/{cert_number}" \
+        # PSA Certificate Checker
+        st.subheader("Check PSA Certificate")
+
+        # Discreet input for certificate number
+        cert_number = st.text_input("Certificate Number:", type="password", placeholder="Enter your certificate number")
+
+        if st.button("Send"):
+            if not cert_number.strip():
+                st.warning("Please enter a certificate number")
+            else:
+                try:
+                    # Construct the cURL command dynamically
+                    curl_command = f'''curl -X GET "https://api.psacard.com/publicapi/cert/GetByCertNumber/{cert_number}" \
     -H "Content-Type: application/json" \
     -H "Authorization: bearer 7zU2hjuSA-4oYqA5uaPX7oUq5SwKIDh8D4RHs4FpVpFJhVTND7TTaoy8K2JZAg6yBbVyumJHiCo-TUMWN3cDmW_cnFyEtjXBUpoWR_ptiFI6PvU6fH1AKwnTsvniUSJHt_t6QjbcfCIEjhcugHnn8dxFwsAoOUnozd7etyqtEjNOw9xDuVeLpIHN-lAVvxb7d1I1GNVNx2XHARx2XKhLEqlC8OOJDcCYif-u-eSEcdIBPEQW7jrCSBXmYjFJZ6nRO8Ha0IBpixxZ-7uAUyXtBNsPAnatTaBT9E6jzgqNAeNY56pW"'''
     
-                # Run the cURL command
-                result = subprocess.run(curl_command, shell=True, capture_output=True, text=True)
+                    # Run the cURL command
+                    result = subprocess.run(curl_command, shell=True, capture_output=True, text=True)
     
-                st.subheader("Output")
-                if result.stdout:
-                    st.code(result.stdout)
-                if result.stderr:
-                    st.subheader("Errors")
-                    st.code(result.stderr)
-            except Exception as e:
-                st.error(f"An error occurred: {e}")
+                    st.subheader("Output")
+                    if result.stdout:
+                        st.code(result.stdout)
+                    if result.stderr:
+                        st.subheader("Errors")
+                        st.code(result.stderr)
+                except Exception as e:
+                    st.error(f"An error occurred: {e}")
