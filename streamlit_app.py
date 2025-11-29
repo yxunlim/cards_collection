@@ -10,7 +10,7 @@ import io
 ADMIN_PASSWORD = "abc123"
 
 CARDS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1_VbZQuf86KRU062VfyLzPU6KP8C3XhZ7MPAvqjfjf0o/export?format=csv&gid=0"
-SLABS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1Wbl85wYiFFiOM53uxnOhv6lZmXLvejTYbsAS0an39A0/export?format=csv&gid=0"
+SLABS_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfViWSZh_ITgWLIUGjx9OkJW-UTt7nJ-W74eto8ODyFAnuaoh3uEY528asdwGgqADuzHW9UgFZzc7v/pubhtml"
 TRACK_SHEET_URL = "https://docs.google.com/spreadsheets/d/1qe3myLWbS20AqIgEh8DkO9GrnXxWYq2kgeeohsl5hlI/export?format=csv&gid=0"
 
 # ------------------- UTIL FUNCTIONS -------------------
