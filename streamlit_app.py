@@ -4,6 +4,7 @@ import plotly.express as px
 import requests
 import subprocess
 import re
+import io
 
 # ------------------- CONFIG -------------------
 ADMIN_PASSWORD = "abc123"
