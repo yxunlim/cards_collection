@@ -74,14 +74,14 @@ def load_slabs():
         "certnumber": "item_no",
         "cardgrade": "psa_grade",
         "sell_price": "sell_price",
-        "image_link": "image_link"
+        "image_link": "image_link",
+        "set": "variety"
     }
     df = normalize_columns(df, column_map)
 
     # Build display 'name' column safely
     df['name'] = df.apply(
-        lambda row: f"{row.get('subject', '')} #{row.get('cardnumber', '')}" +
-                    (f" {row.get('variety')}" if pd.notna(row.get('variety')) else ""),
+        lambda row: f"{row.get('subject', '')} #{row.get('cardnumber', '')}"),
         axis=1
     )
 
