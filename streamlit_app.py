@@ -49,21 +49,6 @@ def load_cards():
     return df
 
 @st.cache_data
-def load_slabs():
-    df = pd.read_csv(SLABS_SHEET_URL)
-    column_map = {
-        "item no": "item_no",
-        "name": "name",
-        "set": "set",
-        "psa grade": "psa_grade",
-        "sell price": "sell_price",
-        "image link": "image_link",
-        "market price": "market_price"
-    }
-    df = normalize_columns(df, column_map)
-    return df
-
-@st.cache_data
 def load_tracking_sheet():
     df = pd.read_csv(TRACK_SHEET_URL)
     df.columns = df.columns.str.strip().str.lower()
@@ -76,8 +61,6 @@ def load_tracking_sheet():
 # ------------------- SESSION STATE -------------------
 if "cards_df" not in st.session_state:
     st.session_state.cards_df = load_cards()
-if "slabs_df" not in st.session_state:
-    st.session_state.slabs_df = load_slabs()
 if "track_df" not in st.session_state:
     st.session_state.track_df = load_tracking_sheet()
 
@@ -208,33 +191,8 @@ with st.container():
     with cols[1]:
         if st.button("🔄 Refresh All", key="refresh_all_global"):
             st.session_state.cards_df = load_cards()
-            st.session_state.slabs_df = load_slabs()
             st.session_state.track_df = load_tracking_sheet()
             st.success("All data refreshed!")
-
-# =================== SLABS TAB ===================
-with tabs[len(all_types)]:
-    st.header("Slabs")
-    if st.button("Refresh Slabs", key="refresh_slabs"):
-        st.session_state.slabs_df = load_slabs()
-        st.success("Slabs refreshed!")
-
-    df = st.session_state.slabs_df.dropna(subset=["name"])
-    for i in range(0, len(df), 3):
-        cols = st.columns(3)
-        for j, slab in enumerate(df.iloc[i:i+3].to_dict(orient="records")):
-            with cols[j]:
-                img_link = slab.get("image_link", "")
-                if img_link and img_link.lower() != "loading...":
-                    st.image(img_link, use_container_width=True)
-                else:
-                    st.image("https://via.placeholder.com/150", use_container_width=True)
-                st.markdown(f"**{slab['name']}**")
-                st.markdown(
-                    f"Set: {slab.get('set','')}  \n"
-                    f"PSA Grade: {slab.get('psa_grade','')}  \n"
-                    f"Sell: {slab.get('sell_price','')} | Market: {slab.get('market_price','')}"
-                )
 
 # =================== TRACKING TAB ===================
 with tabs[len(all_types)+1]:
