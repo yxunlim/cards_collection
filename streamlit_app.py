@@ -9,9 +9,9 @@ import io
 # ------------------- CONFIG -------------------
 ADMIN_PASSWORD = "abc123"
 
-CARDS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1_VbZQuf86KRU062VfyLzPU6KP8C3XhZ7MPAvqjfjf0o/edit?usp=sharing"
-SLABS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1Wbl85wYiFFiOM53uxnOhv6lZmXLvejTYbsAS0an39A0/edit?usp=sharing"
-TRACK_SHEET_URL = "https://docs.google.com/spreadsheets/d/1qe3myLWbS20AqIgEh8DkO9GrnXxWYq2kgeeohsl5hlI/edit?usp=sharing"
+CARDS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1_VbZQuf86KRU062VfyLzPU6KP8C3XhZ7MPAvqjfjf0o/export?format=csv&gid=0"
+SLABS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1Wbl85wYiFFiOM53uxnOhv6lZmXLvejTYbsAS0an39A0/export?format=csv&gid=0"
+TRACK_SHEET_URL = "https://docs.google.com/spreadsheets/d/1qe3myLWbS20AqIgEh8DkO9GrnXxWYq2kgeeohsl5hlI/export?format=csv&gid=0"
 
 # ------------------- UTIL FUNCTIONS -------------------
 def clean_price(value):
