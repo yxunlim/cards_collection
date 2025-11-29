@@ -116,6 +116,10 @@ for index, t in enumerate(all_types):
 
         df = st.session_state.cards_df
         type_df = df[df["type"].str.lower() == t.lower()].dropna(subset=["name"])
+        # Skip items with quantity = 0
+        if "quantity" in type_df.columns:
+            type_df = type_df[type_df["quantity"].astype(str).fillna("").replace("", "0").astype(int) > 0]
+
         type_df["market_price_clean"] = type_df["market_price"].apply(clean_price)
 
         # Filters
