@@ -64,26 +64,33 @@ def load_cards():
 def load_slabs():
     response = requests.get(SLABS_SHEET_URL)
     response.raise_for_status()
-    df = pd.read_csv(io.StringIO(response.text))
+    df = pd.read_csv(io.StringIO(response.text), on_bad_lines='skip')
 
     df.columns = df.columns.str.strip().str.lower()
+
+    # Map relevant columns
     column_map = {
         "certnumber": "item_no",
         "cardgrade": "psa_grade",
         "sell_price": "sell_price",
         "image_link": "image_link",
-        "set": "variety"
+        "set": "variety"  # optional: rename "set" to "variety"
     }
     df = normalize_columns(df, column_map)
 
+    # Create a 'name' column
     df['name'] = df.apply(
         lambda row: f"{row.get('subject', '')} #{row.get('cardnumber', '')}",
         axis=1
     )
 
-    for col in ["item_no", "name", "set", "psa_grade", "sell_price", "image_link"]:
+    # Only keep required columns
+    required_columns = ["item_no", "name", "variety", "psa_grade", "sell_price", "image_link"]
+    for col in required_columns:
         if col not in df.columns:
             df[col] = ""
+    df = df[required_columns]
+
     return df
 
 @st.cache_data
