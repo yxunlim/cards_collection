@@ -10,7 +10,7 @@ import io
 ADMIN_PASSWORD = "abc123"
 
 CARDS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1_VbZQuf86KRU062VfyLzPU6KP8C3XhZ7MPAvqjfjf0o/export?format=csv&id=1_VbZQuf86KRU062VfyLzPU6KP8C3XhZ7MPAvqjfjf0o&gid=0"
-SLABS_SHEET_URL = "https://docs.google.com/spreadsheets/d/16LUG10XJh01vrr_eIkSU3s5votDUZFdB2VSsQZ7ER04/edit?usp=sharing"
+SLABS_SHEET_URL = "https://docs.google.com/spreadsheets/d/16LUG10XJh01vrr_eIkSU3s5votDUZFdB2VSsQZ7ER04/export?format=csv"
 TRACK_SHEET_URL = "https://docs.google.com/spreadsheets/d/1qe3myLWbS20AqIgEh8DkO9GrnXxWYq2kgeeohsl5hlI/export?format=csv&id=1qe3myLWbS20AqIgEh8DkO9GrnXxWYq2kgeeohsl5hlI&gid=509630493"
 
 # ------------------- UTIL FUNCTIONS -------------------
@@ -56,40 +56,50 @@ def load_cards():
         df["type"] = "Other"
     if "quantity" not in df.columns:
         df["quantity"] = 0
+    if "market_price" not in df.columns:
+        df["market_price"] = 0.0
     return df
 
 @st.cache_data
 def load_slabs():
     response = requests.get(SLABS_SHEET_URL)
-    response.raise_for_status()  # raises error if not 200 OK
+    response.raise_for_status()
     df = pd.read_csv(io.StringIO(response.text))
-    
-    # Continue with name concatenation
-    df.columns = df.columns.str.strip().str.lower()
-    df['name'] = df.apply(
-        lambda row: f"{row['Subject']} #{row['CardNumber']}" + (f" {row['Variety']}" if pd.notna(row['Variety']) else ""),
-        axis=1
-    )
 
+    # Normalize column names
+    df.columns = df.columns.str.strip().str.lower()
+
+    # Map columns
     column_map = {
-        "CertNumber": "item_no",
-        "CardGrade": "psa_grade",
+        "certnumber": "item_no",
+        "cardgrade": "psa_grade",
         "sell_price": "sell_price",
         "image_link": "image_link"
     }
     df = normalize_columns(df, column_map)
+
+    # Build display 'name' column safely
+    df['name'] = df.apply(
+        lambda row: f"{row.get('subject', '')} #{row.get('cardnumber', '')}" +
+                    (f" {row.get('variety')}" if pd.notna(row.get('variety')) else ""),
+        axis=1
+    )
+
+    # Ensure required columns exist
     for col in ["item_no", "name", "set", "psa_grade", "sell_price", "image_link"]:
         if col not in df.columns:
             df[col] = ""
+
     return df
+
 @st.cache_data
 def load_tracking_sheet():
     df = pd.read_csv(TRACK_SHEET_URL)
     df.columns = df.columns.str.strip().str.lower()
-    df["time"] = pd.to_datetime(df["time"], dayfirst=True)
-    df["card_value"] = pd.to_numeric(df["card_value"], errors="coerce").fillna(0)
-    df["slab_value"] = pd.to_numeric(df["slab_value"], errors="coerce").fillna(0)
-    df["type"] = df["type"].str.strip()
+    df["time"] = pd.to_datetime(df.get("time", pd.Series()), errors="coerce", dayfirst=True)
+    df["card_value"] = pd.to_numeric(df.get("card_value", 0), errors="coerce").fillna(0)
+    df["slab_value"] = pd.to_numeric(df.get("slab_value", 0), errors="coerce").fillna(0)
+    df["type"] = df.get("type", "").astype(str).str.strip()
     return df
 
 # ------------------- SESSION STATE -------------------
@@ -120,7 +130,6 @@ for index, t in enumerate(all_types):
         df = st.session_state.cards_df
         type_df = df[df["type"].str.lower() == t.lower()].dropna(subset=["name"])
 
-        # Skip items with quantity = 0
         type_df = type_df[type_df["quantity"].astype(str).fillna("0").replace("", "0").astype(int) > 0]
         type_df["market_price_clean"] = type_df["market_price"].apply(clean_price)
 
@@ -194,7 +203,7 @@ for index, t in enumerate(all_types):
         end_idx = start_idx + per_page
         page_df = type_df.iloc[start_idx:end_idx]
 
-        grid_size = 3  # Fixed grid for mobile & desktop
+        grid_size = 3
         for i in range(0, len(page_df), grid_size):
             cols = st.columns(grid_size)
             for j, card in enumerate(page_df.iloc[i:i + grid_size].to_dict(orient="records")):
@@ -212,20 +221,16 @@ for index, t in enumerate(all_types):
                         f"Sell: {card.get('sell_price','')} | Market: {card.get('market_price','')}"
                     )
 
-        # Pagination buttons with separate column for page display
+        # Pagination buttons
         col_prev, col_spacer, col_page_info, col_next = st.columns([1,1,2,1])
-        
         with col_prev:
             if st.button("⬅️ Previous", key=f"prev_{safe_t}_{tab_idx}") and st.session_state[f"page_{safe_t}_{tab_idx}"] > 1:
                 st.session_state[f"page_{safe_t}_{tab_idx}"] -= 1
-        
         with col_page_info:
             st.markdown(f"Page {st.session_state[f'page_{safe_t}_{tab_idx}']} of {total_pages}")
-        
         with col_next:
             if st.button("➡️ Next", key=f"next_{safe_t}_{tab_idx}") and st.session_state[f"page_{safe_t}_{tab_idx}"] < total_pages:
                 st.session_state[f"page_{safe_t}_{tab_idx}"] += 1
-
 
 # ------------------- GLOBAL REFRESH -------------------
 st.markdown("---")
@@ -309,7 +314,6 @@ with tabs[len(all_types)+2]:
             
     st.subheader("Check PSA Certificate")
     
-    # Discreet input for certificate number
     cert_number = st.text_input("Certificate Number:", type="password", placeholder="Enter your certificate number")
     
     if st.button("Send"):
@@ -317,14 +321,10 @@ with tabs[len(all_types)+2]:
             st.warning("Please enter a certificate number")
         else:
             try:
-                # Construct the cURL command dynamically
                 curl_command = f'''curl -X GET "https://api.psacard.com/publicapi/cert/GetByCertNumber/{cert_number}" \
     -H "Content-Type: application/json" \
     -H "Authorization: bearer 7zU2hjuSA-4oYqA5uaPX7oUq5SwKIDh8D4RHs4FpVpFJhVTND7TTaoy8K2JZAg6yBbVyumJHiCo-TUMWN3cDmW_cnFyEtjXBUpoWR_ptiFI6PvU6fH1AKwnTsvniUSJHt_t6QjbcfCIEjhcugHnn8dxFwsAoOUnozd7etyqtEjNOw9xDuVeLpIHN-lAVvxb7d1I1GNVNx2XHARx2XKhLEqlC8OOJDcCYif-u-eSEcdIBPEQW7jrCSBXmYjFJZ6nRO8Ha0IBpixxZ-7uAUyXtBNsPAnatTaBT9E6jzgqNAeNY56pW"'''
-    
-                # Run the cURL command
                 result = subprocess.run(curl_command, shell=True, capture_output=True, text=True)
-    
                 st.subheader("Output")
                 if result.stdout:
                     st.code(result.stdout)
