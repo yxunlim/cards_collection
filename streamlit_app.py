@@ -10,7 +10,6 @@ import io
 ADMIN_PASSWORD = "abc123"
 
 CARDS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1_VbZQuf86KRU062VfyLzPU6KP8C3XhZ7MPAvqjfjf0o/export?format=csv&gid=0"
-SLABS_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTfViWSZh_ITgWLIUGjx9OkJW-UTt7nJ-W74eto8ODyFAnuaoh3uEY528asdwGgqADuzHW9UgFZzc7v/pubhtml"
 TRACK_SHEET_URL = "https://docs.google.com/spreadsheets/d/1qe3myLWbS20AqIgEh8DkO9GrnXxWYq2kgeeohsl5hlI/export?format=csv&gid=0"
 
 # ------------------- UTIL FUNCTIONS -------------------
@@ -58,39 +57,6 @@ def load_cards():
         df["quantity"] = 0
     if "market_price" not in df.columns:
         df["market_price"] = 0.0
-    return df
-
-@st.cache_data
-def load_slabs():
-    response = requests.get(SLABS_SHEET_URL)
-    response.raise_for_status()
-    df = pd.read_csv(io.StringIO(response.text), on_bad_lines='skip')
-
-    df.columns = df.columns.str.strip().str.lower()
-
-    # Map relevant columns
-    column_map = {
-        "certnumber": "item_no",
-        "cardgrade": "psa_grade",
-        "sell_price": "sell_price",
-        "image_link": "image_link",
-        "set": "variety"  # optional: rename "set" to "variety"
-    }
-    df = normalize_columns(df, column_map)
-
-    # Create a 'name' column
-    df['name'] = df.apply(
-        lambda row: f"{row.get('subject', '')} #{row.get('cardnumber', '')}",
-        axis=1
-    )
-
-    # Only keep required columns
-    required_columns = ["item_no", "name", "variety", "psa_grade", "sell_price", "image_link"]
-    for col in required_columns:
-        if col not in df.columns:
-            df[col] = ""
-    df = df[required_columns]
-
     return df
 
 @st.cache_data
@@ -242,30 +208,6 @@ with st.container():
             st.session_state.slabs_df = load_slabs()
             st.session_state.track_df = load_tracking_sheet()
             st.success("All data refreshed!")
-
-# =================== SLABS TAB ===================
-with tabs[len(all_types)]:
-    st.header("Slabs")
-    if st.button("Refresh Slabs", key="refresh_slabs"):
-        st.session_state.slabs_df = load_slabs()
-        st.success("Slabs refreshed!")
-
-    df = st.session_state.slabs_df.dropna(subset=["name"])
-    for i in range(0, len(df), 3):
-        cols = st.columns(3)
-        for j, slab in enumerate(df.iloc[i:i+3].to_dict(orient="records")):
-            with cols[j]:
-                img_link = str(slab.get("image_link", "") or "")
-                if img_link.lower() != "loading...":
-                    st.image(img_link, use_container_width=True)
-                else:
-                    st.image("https://via.placeholder.com/150", use_container_width=True)
-                st.markdown(f"**{slab['name']}**")
-                st.markdown(
-                    f"Set: {slab.get('set','')}  \n"
-                    f"PSA Grade: {slab.get('psa_grade','')}  \n"
-                    f"Sell: {slab.get('sell_price','')} | Market: {slab.get('market_price','')}"
-                )
 
 # =================== TRACKING TAB ===================
 with tabs[len(all_types)+1]:
