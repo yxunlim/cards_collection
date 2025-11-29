@@ -202,16 +202,20 @@ for index, t in enumerate(all_types):
                         f"Sell: {card.get('sell_price','')} | Market: {card.get('market_price','')}"
                     )
 
-        # Pagination buttons
-        col_prev, col_page, col_next = st.columns([1,2,1])
+        # Pagination buttons with separate column for page display
+        col_prev, col_spacer, col_page_info, col_next = st.columns([1,1,2,1])
+        
         with col_prev:
             if st.button("⬅️ Previous", key=f"prev_{safe_t}_{tab_idx}") and st.session_state[f"page_{safe_t}_{tab_idx}"] > 1:
                 st.session_state[f"page_{safe_t}_{tab_idx}"] -= 1
-        with col_page:
+        
+        with col_page_info:
             st.markdown(f"Page {st.session_state[f'page_{safe_t}_{tab_idx}']} of {total_pages}")
+        
         with col_next:
             if st.button("➡️ Next", key=f"next_{safe_t}_{tab_idx}") and st.session_state[f"page_{safe_t}_{tab_idx}"] < total_pages:
                 st.session_state[f"page_{safe_t}_{tab_idx}"] += 1
+
 
 # ------------------- GLOBAL REFRESH -------------------
 st.markdown("---")
