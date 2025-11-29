@@ -72,8 +72,6 @@ def load_tracking_sheet():
 # ------------------- SESSION STATE -------------------
 if "cards_df" not in st.session_state:
     st.session_state.cards_df = load_cards()
-if "slabs_df" not in st.session_state:
-    st.session_state.slabs_df = load_slabs()
 if "track_df" not in st.session_state:
     st.session_state.track_df = load_tracking_sheet()
 
@@ -205,7 +203,6 @@ with st.container():
     with cols[1]:
         if st.button("🔄 Refresh All", key="refresh_all_global"):
             st.session_state.cards_df = load_cards()
-            st.session_state.slabs_df = load_slabs()
             st.session_state.track_df = load_tracking_sheet()
             st.success("All data refreshed!")
 
