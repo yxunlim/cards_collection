@@ -81,7 +81,7 @@ def load_slabs():
 
     # Build display 'name' column safely
     df['name'] = df.apply(
-        lambda row: f"{row.get('subject', '')} #{row.get('cardnumber', '')}"),
+        lambda row: f"{row.get('subject', '')} #{row.get('cardnumber', '')}",
         axis=1
     )
 
