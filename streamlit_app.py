@@ -1,78 +1,8 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import requests
 import subprocess
-
-# ------------------- GLOBAL UI (MOBILE + DESKTOP) -------------------
-st.markdown("""
-<style>
-/* ----------------------------
-   GLOBAL LAYOUT IMPROVEMENTS
------------------------------*/
-.block-container {
-    padding-top: 1.5rem;
-}
-
-/* Improve card text readability */
-.card-text, .stMarkdown {
-    word-wrap: break-word !important;
-    white-space: normal !important;
-    line-height: 1.25rem;
-}
-
-/* Global image behavior */
-img {
-    width: 100% !important;
-    height: auto !important;
-    border-radius: 10px;
-    display: block;
-}
-
-/* Reduce excessive spacing between elements */
-.css-1kyxreq, .css-12oz5g7 {  
-    margin-bottom: 0.5rem !important;
-}
-
-/* ----------------------------
-   MOBILE OPTIMIZATIONS
------------------------------*/
-@media (max-width: 600px) {
-
-    /* Reduce side padding */
-    .block-container {
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-    }
-
-    /* Slightly smaller text */
-    .stMarkdown, .card-text {
-        font-size: 0.85rem !important;
-    }
-
-    /* Make buttons easy to tap (pagination / refresh) */
-    .stButton > button {
-        width: 100% !important;
-        padding: 12px !important;
-        font-size: 1rem !important;
-    }
-
-    /* Shrink image top margin */
-    img {
-        margin-top: 0.2rem !important;
-    }
-}
-
-/* ----------------------------
-   DESKTOP OPTIMIZATIONS
------------------------------*/
-@media (min-width: 1000px) {
-    .stMarkdown, .card-text {
-        font-size: 1rem;
-    }
-}
-</style>
-""", unsafe_allow_html=True)
+import re
 
 # ------------------- CONFIG -------------------
 ADMIN_PASSWORD = "abc123"
@@ -81,7 +11,7 @@ CARDS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1_VbZQuf86KRU062VfyLzP
 SLABS_SHEET_URL = "https://docs.google.com/spreadsheets/d/16LUG10XJh01vrr_eIkSU3s5votDUZFdB2VSsQZ7ER04/export?format=csv&id=16LUG10XJh01vrr_eIkSU3s5votDUZFdB2VSsQZ7ER04&gid=0"
 TRACK_SHEET_URL = "https://docs.google.com/spreadsheets/d/1qe3myLWbS20AqIgEh8DkO9GrnXxWYq2kgeeohsl5hlI/export?format=csv&id=1qe3myLWbS20AqIgEh8DkO9GrnXxWYq2kgeeohsl5hlI&gid=509630493"
 
-# ------------------- UTIL FUNCTIONS -------------------
+# ------------------- UTILITY FUNCTIONS -------------------
 def clean_price(value):
     if pd.isna(value):
         return 0.0
@@ -95,6 +25,12 @@ def normalize_columns(df, column_map):
     df.columns = df.columns.str.strip().str.lower()
     df = df.rename(columns={k.lower(): v for k, v in column_map.items() if k.lower() in df.columns})
     return df
+
+def make_safe_key(s):
+    s = str(s).lower()
+    s = re.sub(r'\s+', '_', s)        # replace spaces with underscores
+    s = re.sub(r'\W+', '', s)         # remove non-alphanumeric
+    return s
 
 # ------------------- LOAD DATA -------------------
 @st.cache_data
@@ -115,13 +51,10 @@ def load_cards():
         "quantity": "quantity"
     }
     df = normalize_columns(df, column_map)
-
     if "type" not in df.columns:
         df["type"] = "Other"
-
     if "quantity" not in df.columns:
-        df["quantity"] = ""
-
+        df["quantity"] = 0
     return df
 
 @st.cache_data
@@ -165,16 +98,8 @@ priority_lookup = [p.lower() for p in priority_display]
 
 raw_types = [t.strip() for t in cards_df["type"].dropna().unique() if str(t).strip() != ""]
 
-priority_types = []
-for disp, key in zip(priority_display, priority_lookup):
-    if key in [r.lower() for r in raw_types]:
-        priority_types.append(disp)
-
-remaining_types = sorted([
-    t.title() for t in raw_types
-    if t.lower() not in priority_lookup
-])
-
+priority_types = [disp for disp, key in zip(priority_display, priority_lookup) if key in [r.lower() for r in raw_types]]
+remaining_types = sorted([t.title() for t in raw_types if t.lower() not in priority_lookup])
 all_types = priority_types + remaining_types
 
 tabs = st.tabs(all_types + ["Slabs", "Tracking", "Admin Panel"])
@@ -183,58 +108,36 @@ tabs = st.tabs(all_types + ["Slabs", "Tracking", "Admin Panel"])
 for index, t in enumerate(all_types):
     with tabs[index]:
         st.header(f"{t.title()} Cards")
+        safe_t = make_safe_key(t)
 
         df = st.session_state.cards_df
         type_df = df[df["type"].str.lower() == t.lower()].dropna(subset=["name"])
-
         # Skip items with quantity = 0
         if "quantity" in type_df.columns:
-            # convert safely to int; blanks -> 0
-            try:
-                type_df["quantity_norm"] = type_df["quantity"].astype(str).fillna("").replace("", "0").astype(int)
-                type_df = type_df[type_df["quantity_norm"] > 0].drop(columns=["quantity_norm"])
-            except Exception:
-                # if conversion fails, keep rows where quantity is truthy string
-                type_df = type_df[type_df["quantity"].astype(str).str.strip() != "0"].copy()
+            type_df = type_df[type_df["quantity"].astype(str).fillna("").replace("", "0").astype(int) > 0
+]
 
-        # If no items after filtering, show message and skip rendering heavy UI
-        if type_df.empty:
-            st.info("No items to display for this type.")
-            continue
-
-        # Clean price
         type_df["market_price_clean"] = type_df["market_price"].apply(clean_price)
 
-        # Filters
+        # ---------------- Filters ----------------
         st.subheader("Filters")
-        col1, col2, col3, col4 = st.columns([1,1,1,1])
+        col1, col2, col3 = st.columns([1,1,1])
         with col1:
             sets_available = sorted(type_df["set"].dropna().unique())
-            selected_set = st.selectbox("Set", ["All"] + sets_available, key=f"set_{t}")
+            selected_set = st.selectbox("Set", ["All"] + sets_available, key=f"set_{safe_t}")
         with col2:
-            search_query = st.text_input("Search Name", "", key=f"search_{t}")
+            search_query = st.text_input("Search Name", "", key=f"search_{safe_t}")
         with col3:
             sort_option = st.selectbox(
                 "Sort By",
                 ["Name (A-Z)", "Name (Z-A)", "Price Low→High", "Price High→Low"],
-                key=f"sort_{t}"
+                key=f"sort_{safe_t}"
             )
-        with col4:
-            grid_size = 3  # FIXED GRID SIZE
 
         # Price slider
         st.subheader("Price Filter")
-        # guard against weird min/max
-        min_possible = type_df["market_price_clean"].min()
-        max_possible = type_df["market_price_clean"].max()
-        # if NaN, treat as 0
-        if pd.isna(min_possible):
-            min_possible = 0.0
-        if pd.isna(max_possible):
-            max_possible = 0.0
-        min_possible = float(min_possible)
-        max_possible = float(max_possible)
-
+        min_possible = float(type_df["market_price_clean"].min())
+        max_possible = float(type_df["market_price_clean"].max())
         if min_possible == max_possible:
             min_price, max_price = min_possible, max_possible
         else:
@@ -243,84 +146,68 @@ for index, t in enumerate(all_types):
                 min_value=min_possible,
                 max_value=max_possible,
                 value=(min_possible, max_possible),
-                key=f"price_{t}"
+                key=f"price_{safe_t}"
             )
 
         # Apply filters
-        filtered_df = type_df.copy()
         if selected_set != "All":
-            filtered_df = filtered_df[filtered_df["set"] == selected_set]
+            type_df = type_df[type_df["set"] == selected_set]
         if search_query.strip():
-            filtered_df = filtered_df[filtered_df["name"].str.contains(search_query, case=False, na=False)]
-        filtered_df = filtered_df[(filtered_df["market_price_clean"] >= min_price) & (filtered_df["market_price_clean"] <= max_price)]
+            type_df = type_df[type_df["name"].str.contains(search_query, case=False, na=False)]
+        type_df = type_df[(type_df["market_price_clean"] >= min_price) & (type_df["market_price_clean"] <= max_price)]
         if selected_set == "All":
-            filtered_df = filtered_df.sort_values("set", ascending=False)
+            type_df = type_df.sort_values("set", ascending=False)
 
         if sort_option == "Name (A-Z)":
-            filtered_df = filtered_df.sort_values("name")
+            type_df = type_df.sort_values("name")
         elif sort_option == "Name (Z-A)":
-            filtered_df = filtered_df.sort_values("name", ascending=False)
+            type_df = type_df.sort_values("name", ascending=False)
         elif sort_option == "Price Low→High":
-            filtered_df = filtered_df.sort_values("market_price_clean")
+            type_df = type_df.sort_values("market_price_clean")
         elif sort_option == "Price High→Low":
-            filtered_df = filtered_df.sort_values("market_price_clean", ascending=False)
+            type_df = type_df.sort_values("market_price_clean", ascending=False)
 
-        # Pagination
+        # ---------------- Pagination ----------------
         st.subheader("Results")
-        per_page = st.selectbox("Results per page", [9,45,99], index=0, key=f"per_page_{t}")
-        if f"page_{t}" not in st.session_state:
-            st.session_state[f"page_{t}"] = 1
+        per_page = st.selectbox("Results per page", [9,45,99], index=0, key=f"per_page_{safe_t}")
+        if f"page_{safe_t}" not in st.session_state:
+            st.session_state[f"page_{safe_t}"] = 1
 
-        total_items = len(filtered_df)
-        total_pages = (total_items - 1) // per_page + 1 if total_items > 0 else 1
-        start_idx = (st.session_state[f"page_{t}"] - 1) * per_page
+        total_items = len(type_df)
+        total_pages = (total_items - 1) // per_page + 1
+        start_idx = (st.session_state[f"page_{safe_t}"] - 1) * per_page
         end_idx = start_idx + per_page
-        page_df = filtered_df.iloc[start_idx:end_idx]
+        page_df = type_df.iloc[start_idx:end_idx]
 
-        # Render cards in fixed 3-column grid
-        for i in range(0, len(page_df), grid_size):
-            row_cards = page_df.iloc[i:i + grid_size].to_dict(orient="records")
-            cols = st.columns(grid_size)
-            for j, card in enumerate(row_cards):
+        # ---------------- Display Cards ----------------
+        for i in range(0, len(page_df), 3):  # Fixed grid = 3
+            cols = st.columns(3)
+            for j, card in enumerate(page_df.iloc[i:i + 3].to_dict(orient="records")):
                 with cols[j]:
                     img_link = card.get("image_link", "")
-                    if img_link and str(img_link).strip().lower() != "loading...":
+                    if img_link and img_link.lower() != "loading...":
                         st.image(img_link, use_container_width=True)
                     else:
                         st.image("https://via.placeholder.com/150", use_container_width=True)
 
-                    # Title (always shown)
-                    st.markdown(f"**{card.get('name','')}**")
+                    st.markdown(f"**{card['name']}**")
+                    st.markdown(
+                        f"Set: {card.get('set','')}  \n"
+                        f"Condition: {card.get('condition','')}  \n"
+                        f"Quantity: {card.get('quantity','')}  \n"
+                        f"Sell: {card.get('sell_price','')} | Market: {card.get('market_price','')}"
+                    )
 
-                    # Responsive card details block (no Quantity line if blank/0)
-                    quantity_val = card.get("quantity", "")
-                    quantity_display = ""
-                    try:
-                        if str(quantity_val).strip() != "" and int(str(quantity_val).strip()) != 0:
-                            quantity_display = f"Quantity: {quantity_val}<br>"
-                    except Exception:
-                        if str(quantity_val).strip() != "" and str(quantity_val).strip() != "0":
-                            quantity_display = f"Quantity: {quantity_val}<br>"
-
-                    st.markdown(f"""
-                    <div class="card-text">
-                    Set: {card.get('set','')}<br>
-                    Condition: {card.get('condition','')}<br>
-                    {quantity_display}
-                    Sell: {card.get('sell_price','')} | Market: {card.get('market_price','')}
-                    </div>
-                    """, unsafe_allow_html=True)
-
-        # Pagination buttons
+        # ---------------- Pagination Buttons ----------------
         col_prev, col_page, col_next = st.columns([1,2,1])
         with col_prev:
-            if st.button("⬅️ Previous", key=f"prev_{t}") and st.session_state[f"page_{t}"] > 1:
-                st.session_state[f"page_{t}"] -= 1
+            if st.button("⬅️ Previous", key=f"prev_{safe_t}") and st.session_state[f"page_{safe_t}"] > 1:
+                st.session_state[f"page_{safe_t}"] -= 1
         with col_page:
-            st.markdown(f"Page {st.session_state[f'page_{t}']} of {total_pages}")
+            st.markdown(f"Page {st.session_state[f'page_{safe_t}']} of {total_pages}")
         with col_next:
-            if st.button("➡️ Next", key=f"next_{t}") and st.session_state[f"page_{t}"] < total_pages:
-                st.session_state[f"page_{t}"] += 1
+            if st.button("➡️ Next", key=f"next_{safe_t}") and st.session_state[f"page_{safe_t}"] < total_pages:
+                st.session_state[f"page_{safe_t}"] += 1
 
 # ------------------- GLOBAL REFRESH -------------------
 st.markdown("---")
@@ -346,11 +233,11 @@ with tabs[len(all_types)]:
         for j, slab in enumerate(df.iloc[i:i+3].to_dict(orient="records")):
             with cols[j]:
                 img_link = slab.get("image_link", "")
-                if img_link and str(img_link).strip().lower() != "loading...":
+                if img_link and img_link.lower() != "loading...":
                     st.image(img_link, use_container_width=True)
                 else:
                     st.image("https://via.placeholder.com/150", use_container_width=True)
-                st.markdown(f"**{slab.get('name','')}**")
+                st.markdown(f"**{slab['name']}**")
                 st.markdown(
                     f"Set: {slab.get('set','')}  \n"
                     f"PSA Grade: {slab.get('psa_grade','')}  \n"
@@ -365,7 +252,6 @@ with tabs[len(all_types)+1]:
     st.subheader("Filters")
     types_available = sorted(df["type"].unique())
     selected_types = st.multiselect("Select Types", types_available, default=types_available)
-
     if selected_types:
         df = df[df["type"].isin(selected_types)]
 
@@ -387,7 +273,6 @@ with tabs[len(all_types)+2]:
         st.subheader("Existing Cards (Table View)")
         st.dataframe(st.session_state.cards_df)
 
-        # Mini Terminal for cURL Requests
         st.subheader("Mini Terminal for cURL Requests")
         curl_command = st.text_area("Enter cURL command:", placeholder="e.g., curl https://api.github.com")
         if st.button("Run CURL"):
