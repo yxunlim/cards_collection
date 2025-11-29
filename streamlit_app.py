@@ -59,33 +59,29 @@ def load_cards():
 
 @st.cache_data
 def load_slabs():
-    df = pd.read_csv(SLABS_SHEET_URL)
-
-    # Normalize column names
+    response = requests.get(SLABS_SHEET_URL)
+    response.raise_for_status()  # raises error if not 200 OK
+    df = pd.read_csv(io.StringIO(response.text))
+    
+    # Continue with name concatenation
     df.columns = df.columns.str.strip().str.lower()
-
-    # Construct 'name' as "Subject #CardNumber Variety"
     df['name'] = df.apply(
         lambda row: f"{row['subject']} #{row['cardnumber']}" + (f" {row['variety']}" if pd.notna(row['variety']) else ""),
         axis=1
     )
 
-    # Map relevant columns to expected keys
     column_map = {
-        "certnumber": "item_no",       # PSA certificate number as unique ID
-        "cardgrade": "psa_grade",      # PSA grade
-        "price": "sell_price",         # Selling price
-        "image_link": "image_link"     # Image
+        "certnumber": "item_no",
+        "brand": "set",
+        "cardgrade": "psa_grade",
+        "price": "sell_price",
+        "image_link": "image_link"
     }
     df = normalize_columns(df, column_map)
-
-    # Fill missing columns to avoid errors
     for col in ["item_no", "name", "set", "psa_grade", "sell_price", "image_link"]:
         if col not in df.columns:
             df[col] = ""
-
     return df
-
 @st.cache_data
 def load_tracking_sheet():
     df = pd.read_csv(TRACK_SHEET_URL)
