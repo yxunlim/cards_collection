@@ -42,10 +42,16 @@ def load_cards():
         "sell price": "sell_price",
         "image link": "image_link",
         "market price": "market_price",
+        "quantity": "quantity"  # ADDED
     }
     df = normalize_columns(df, column_map)
+
     if "type" not in df.columns:
         df["type"] = "Other"
+
+    if "quantity" not in df.columns:
+        df["quantity"] = ""
+
     return df
 
 @st.cache_data
@@ -183,10 +189,14 @@ for index, t in enumerate(all_types):
                         st.image(img_link, use_container_width=True)
                     else:
                         st.image("https://via.placeholder.com/150", use_container_width=True)
+
                     st.markdown(f"**{card['name']}**")
+
+                    # UPDATED: Added Quantity display
                     st.markdown(
                         f"Set: {card.get('set','')}  \n"
                         f"Condition: {card.get('condition','')}  \n"
+                        f"Quantity: {card.get('quantity','')}  \n"
                         f"Sell: {card.get('sell_price','')} | Market: {card.get('market_price','')}"
                     )
 
@@ -266,7 +276,7 @@ with tabs[len(all_types)+2]:
         st.subheader("Existing Cards (Table View)")
         st.dataframe(st.session_state.cards_df)
 
-# Mini Terminal for cURL Requests
+        # Mini Terminal for cURL Requests
         st.subheader("Mini Terminal for cURL Requests")
         curl_command = st.text_area("Enter cURL command:", placeholder="e.g., curl https://api.github.com")
         if st.button("Run CURL"):
@@ -274,7 +284,6 @@ with tabs[len(all_types)+2]:
                 st.warning("Please enter a cURL command")
             else:
                 try:
-                    # Execute cURL (unsafe on public apps!)
                     result = subprocess.run(curl_command, shell=True, capture_output=True, text=True)
                     st.subheader("Output")
                     if result.stdout:
