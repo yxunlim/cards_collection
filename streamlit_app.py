@@ -9,7 +9,7 @@ import io
 # ------------------- CONFIG -------------------
 ADMIN_PASSWORD = "abc123"
 
-CARDS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1_VbZQuf86KRU062VfyLzPU6KP8C3XhZ7MPAvqjfjf0o/export?format=csv&id=1_VbZQuf86KRU062VfyLzPU6KP8C3XhZ7MPAvqjfjf0o&gid=0"
+CARDS_SHEET_URL = "https://docs.google.com/spreadsheets/d/1_VbZQuf86KRU062VfyLzPU6KP8C3Xh7MPAvqjfjf0o/export?format=csv&id=1_VbZQuf86KRU062VfyLzPU6KP8C3Xh7MPAvqjfjf0o&gid=0"
 SLABS_SHEET_URL = "https://docs.google.com/spreadsheets/d/16LUG10XJh01vrr_eIkSU3s5votDUZFdB2VSsQZ7ER04/export?format=csv"
 TRACK_SHEET_URL = "https://docs.google.com/spreadsheets/d/1qe3myLWbS20AqIgEh8DkO9GrnXxWYq2kgeeohsl5hlI/export?format=csv&id=1qe3myLWbS20AqIgEh8DkO9GrnXxWYq2kgeeohsl5hlI&gid=509630493"
 
@@ -66,10 +66,7 @@ def load_slabs():
     response.raise_for_status()
     df = pd.read_csv(io.StringIO(response.text))
 
-    # Normalize column names
     df.columns = df.columns.str.strip().str.lower()
-
-    # Map columns
     column_map = {
         "certnumber": "item_no",
         "cardgrade": "psa_grade",
@@ -79,17 +76,14 @@ def load_slabs():
     }
     df = normalize_columns(df, column_map)
 
-    # Build display 'name' column safely
     df['name'] = df.apply(
         lambda row: f"{row.get('subject', '')} #{row.get('cardnumber', '')}",
         axis=1
     )
 
-    # Ensure required columns exist
     for col in ["item_no", "name", "set", "psa_grade", "sell_price", "image_link"]:
         if col not in df.columns:
             df[col] = ""
-
     return df
 
 @st.cache_data
@@ -129,7 +123,6 @@ for index, t in enumerate(all_types):
 
         df = st.session_state.cards_df
         type_df = df[df["type"].str.lower() == t.lower()].dropna(subset=["name"])
-
         type_df = type_df[type_df["quantity"].astype(str).fillna("0").replace("", "0").astype(int) > 0]
         type_df["market_price_clean"] = type_df["market_price"].apply(clean_price)
 
@@ -208,8 +201,8 @@ for index, t in enumerate(all_types):
             cols = st.columns(grid_size)
             for j, card in enumerate(page_df.iloc[i:i + grid_size].to_dict(orient="records")):
                 with cols[j]:
-                    img_link = card.get("image_link", "")
-                    if img_link and img_link.lower() != "loading...":
+                    img_link = str(card.get("image_link", "") or "")
+                    if img_link.lower() != "loading...":
                         st.image(img_link, use_container_width=True)
                     else:
                         st.image("https://via.placeholder.com/150", use_container_width=True)
@@ -255,8 +248,8 @@ with tabs[len(all_types)]:
         cols = st.columns(3)
         for j, slab in enumerate(df.iloc[i:i+3].to_dict(orient="records")):
             with cols[j]:
-                img_link = slab.get("image_link", "")
-                if img_link and img_link.lower() != "loading...":
+                img_link = str(slab.get("image_link", "") or "")
+                if img_link.lower() != "loading...":
                     st.image(img_link, use_container_width=True)
                 else:
                     st.image("https://via.placeholder.com/150", use_container_width=True)
