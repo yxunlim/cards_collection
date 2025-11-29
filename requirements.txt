@@ -4,3 +4,5 @@ openpyxl
 requests
 nbformat
 nbconvert
+jinja2
+pygments
