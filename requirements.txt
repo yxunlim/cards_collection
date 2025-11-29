@@ -2,3 +2,5 @@ streamlit
 plotly.express
 openpyxl
 requests
+nbformat
+nbconvert
