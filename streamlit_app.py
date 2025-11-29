@@ -67,15 +67,14 @@ def load_slabs():
     # Continue with name concatenation
     df.columns = df.columns.str.strip().str.lower()
     df['name'] = df.apply(
-        lambda row: f"{row['subject']} #{row['cardnumber']}" + (f" {row['variety']}" if pd.notna(row['variety']) else ""),
+        lambda row: f"{row['Subject']} #{row['CardNumber']}" + (f" {row['Variety']}" if pd.notna(row['Variety']) else ""),
         axis=1
     )
 
     column_map = {
-        "certnumber": "item_no",
-        "brand": "set",
-        "cardgrade": "psa_grade",
-        "price": "sell_price",
+        "CertNumber": "item_no",
+        "CardGrade": "psa_grade",
+        "sell_price": "sell_price",
         "image_link": "image_link"
     }
     df = normalize_columns(df, column_map)
